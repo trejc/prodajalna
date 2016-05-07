@@ -47,7 +47,7 @@ function davcnaStopnja(izvajalec, zanr) {
 
 // Prikaz seznama pesmi na strani
 streznik.get('/', function(zahteva, odgovor) {
-  if(zahteva.session.strankaId == null)
+  if(zahteva.session.stranka == null)
     odgovor.redirect('/prijava');
   else
     pb.all("SELECT Track.TrackId AS id, Track.Name AS pesem, \
@@ -194,7 +194,8 @@ streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
       odgovor.setHeader('content-type', 'text/xml');
       odgovor.render('eslog', {
         vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
-        postavkeRacuna: pesmi
+        postavkeRacuna: pesmi,
+        stranka: zahteva.session.stranka
       })  
     }
   })
@@ -266,7 +267,7 @@ streznik.get('/prijava', function(zahteva, odgovor) {
   vrniStranke(function(napaka1, stranke) {
       vrniRacune(function(napaka2, racuni) {
         odgovor.render('prijava', {sporocilo: "", seznamStrank: stranke, seznamRacunov: racuni});  
-      }) 
+      })
     });
 })
 
@@ -275,18 +276,20 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
-    zahteva.session.strankaId = polja.seznamStrank;
-    odgovor.redirect('/')
+    pb.all("SELECT Customer.* FROM Customer, Invoice \
+            WHERE Customer.CustomerId = " + polja.seznamStrank,
+    function(napaka, vrstice) {
+      zahteva.session.stranka = vrstice[0]
+      odgovor.redirect('/')
+    })
   });
 })
 
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
-  zahteva.session.strankaId = null;
+  zahteva.session.stranka = null;
   odgovor.redirect('/prijava') 
 })
-
-
 
 streznik.listen(process.env.PORT, function() {
   console.log("Strežnik pognan!");
